@@ -8,7 +8,7 @@ async def test_health(client):
     data = response.json()
     assert data["status"] == "ok"
     assert data["inference_mode"] == "demo"
-    assert "mistral" in data["base_model_id"].lower()
+    assert data["storage_enabled"] is True
 
 
 @pytest.mark.asyncio
@@ -20,6 +20,36 @@ async def test_review_compare(client, sample_request):
     assert "finetuned_model" in data
     assert len(data["base_model"]["comments"]) >= 1
     assert len(data["finetuned_model"]["comments"]) >= 1
+
+
+@pytest.mark.asyncio
+async def test_review_saved_to_history(client, sample_request):
+    await client.post("/api/review", json=sample_request)
+    response = await client.get("/api/admin/reviews", headers={"X-Admin-Key": "test-admin-key"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] >= 1
+    assert data["items"][0]["user_name"] == "alice"
+
+
+@pytest.mark.asyncio
+async def test_admin_requires_key(client):
+    response = await client.get("/api/admin/reviews")
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_admin_rejects_invalid_key(client):
+    response = await client.get("/api/admin/reviews", headers={"X-Admin-Key": "wrong"})
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_admin_stats(client, sample_request):
+    await client.post("/api/review", json=sample_request)
+    response = await client.get("/api/admin/stats", headers={"X-Admin-Key": "test-admin-key"})
+    assert response.status_code == 200
+    assert response.json()["total_reviews"] >= 1
 
 
 @pytest.mark.asyncio

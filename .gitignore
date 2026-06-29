@@ -16,6 +16,7 @@ env/
 models/
 checkpoints/
 data/
+*.db
 *.bin
 *.safetensors
 

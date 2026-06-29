@@ -1,3 +1,4 @@
+from datetime import datetime
 from enum import Enum
 
 from pydantic import BaseModel, Field
@@ -30,6 +31,7 @@ class ReviewRequest(BaseModel):
     code: str = Field(..., min_length=1, max_length=8000)
     language: str = Field(default="python", max_length=50)
     context: str | None = Field(default=None, max_length=2000)
+    user_name: str | None = Field(default=None, max_length=120)
 
 
 class ModelReviewResult(BaseModel):
@@ -49,3 +51,32 @@ class HealthResponse(BaseModel):
     inference_mode: str
     base_model_id: str
     finetuned_model_id: str
+    storage_enabled: bool
+
+
+class ReviewHistoryItem(BaseModel):
+    id: str
+    user_name: str
+    client_ip: str | None
+    language: str
+    code_preview: str
+    code: str
+    context: str | None
+    issue_types: list[str]
+    finetuned_comment_count: int
+    base_comments_json: str
+    finetuned_comments_json: str
+    inference_mode: str
+    created_at: datetime
+
+
+class ReviewStats(BaseModel):
+    total_reviews: int
+    unique_users: int
+
+
+class ReviewHistoryResponse(BaseModel):
+    items: list[ReviewHistoryItem]
+    total: int
+    limit: int
+    offset: int

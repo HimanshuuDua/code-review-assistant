@@ -10,6 +10,7 @@ const DEFAULT_CODE = `def divide(a, b):
 export default function App() {
   const [code, setCode] = useState(DEFAULT_CODE)
   const [language, setLanguage] = useState('python')
+  const [userName, setUserName] = useState(() => localStorage.getItem('cra_user_name') ?? '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<CompareReviewResponse | null>(null)
@@ -25,14 +26,19 @@ export default function App() {
     setLoading(true)
     setError(null)
     try {
-      const response = await reviewCode({ code, language })
+      const response = await reviewCode({
+        code,
+        language,
+        user_name: userName.trim() || undefined,
+      })
+      if (userName.trim()) localStorage.setItem('cra_user_name', userName.trim())
       setResult(response)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Review failed')
     } finally {
       setLoading(false)
     }
-  }, [code, language])
+  }, [code, language, userName])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
@@ -46,11 +52,14 @@ export default function App() {
               Fine-tuned Mistral 7B vs base model — side by side
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
+            <a href="/admin" className="text-xs text-slate-400 hover:text-emerald-400">Admin</a>
+            <div className="flex items-center gap-2">
             <span className="text-xs text-slate-500">mode:</span>
             <span className="text-xs px-2 py-1 rounded-md bg-slate-800 border border-slate-700 text-slate-300 font-mono" data-testid="inference-mode">
               {apiMode}
             </span>
+            </div>
           </div>
         </div>
       </header>
@@ -59,8 +68,10 @@ export default function App() {
         <CodeInput
           code={code}
           language={language}
+          userName={userName}
           onCodeChange={setCode}
           onLanguageChange={setLanguage}
+          onUserNameChange={setUserName}
           onSubmit={handleReview}
           loading={loading}
         />

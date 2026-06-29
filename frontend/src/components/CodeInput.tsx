@@ -19,8 +19,10 @@ const EXAMPLES = [
 interface CodeInputProps {
   code: string
   language: string
+  userName: string
   onCodeChange: (code: string) => void
   onLanguageChange: (language: string) => void
+  onUserNameChange: (name: string) => void
   onSubmit: () => void
   loading: boolean
 }
@@ -28,16 +30,26 @@ interface CodeInputProps {
 export function CodeInput({
   code,
   language,
+  userName,
   onCodeChange,
   onLanguageChange,
+  onUserNameChange,
   onSubmit,
   loading,
 }: CodeInputProps) {
   return (
     <div className="rounded-xl border border-slate-700 bg-slate-900/60 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/60 bg-slate-800/50">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <span className="text-sm font-medium text-slate-300">Code to review</span>
+          <input
+            type="text"
+            value={userName}
+            onChange={(e) => onUserNameChange(e.target.value)}
+            placeholder="Your name"
+            data-testid="user-name-input"
+            className="text-xs bg-slate-700 border border-slate-600 rounded-md px-2 py-1 text-slate-200 w-32 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          />
           <select
             value={language}
             onChange={(e) => onLanguageChange(e.target.value)}

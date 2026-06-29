@@ -1,6 +1,15 @@
 import os
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _default_database_url() -> str:
+    if os.environ.get("VERCEL"):
+        return "sqlite+aiosqlite:////tmp/reviews.db"
+    return f"sqlite+aiosqlite:///{PROJECT_ROOT / 'data' / 'reviews.db'}"
 
 
 class Settings(BaseSettings):
@@ -18,6 +27,9 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
     cors_origins: str = "http://localhost:5173,http://localhost:3000"
+    database_url: str = ""
+    admin_api_key: str = "change-me-in-production"
+    storage_enabled: bool = True
 
     @property
     def cors_origin_list(self) -> list[str]:
@@ -29,3 +41,5 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+if not settings.database_url:
+    settings.database_url = _default_database_url()

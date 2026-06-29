@@ -2,7 +2,12 @@
   "installCommand": "pip install -r requirements.txt && cd frontend && npm ci",
   "buildCommand": "cd frontend && npm run build",
   "outputDirectory": "frontend/dist",
+  "rewrites": [
+    { "source": "/admin", "destination": "/index.html" },
+    { "source": "/admin/(.*)", "destination": "/index.html" }
+  ],
   "env": {
-    "INFERENCE_MODE": "demo"
+    "INFERENCE_MODE": "demo",
+    "STORAGE_ENABLED": "true"
   }
 }
