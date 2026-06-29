@@ -1,0 +1,11 @@
+# HuggingFace Jobs dependencies for training
+datasets
+accelerate
+evaluate
+trl
+peft
+bitsandbytes
+transformers
+sacrebleu
+huggingface_hub
+torch
