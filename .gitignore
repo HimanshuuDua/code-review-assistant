@@ -47,3 +47,5 @@ playwright/.cache/
 
 # Evaluation outputs
 evaluation/results/
+
+.vercel

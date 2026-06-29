@@ -1,5 +1,5 @@
-from schemas import CommentType, ReviewComment, Severity
-from services.reviewer import _parse_comments
+from backend.schemas import CommentType, ReviewComment, Severity
+from backend.services.reviewer import _parse_comments
 
 
 def test_parse_json_array():

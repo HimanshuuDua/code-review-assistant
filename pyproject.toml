@@ -11,7 +11,7 @@ dependencies = [
 ]
 
 [tool.vercel]
-entrypoint = "api.index:app"
+entrypoint = "backend.main:app"
 
 [tool.vercel.scripts]
 build = "cd frontend && npm ci && npm run build"

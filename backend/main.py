@@ -3,9 +3,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from config import settings
-from schemas import CompareReviewResponse, HealthResponse, ModelReviewResult, ReviewRequest
-from services.reviewer import reviewer_service
+from backend.config import settings
+from backend.schemas import CompareReviewResponse, HealthResponse, ModelReviewResult, ReviewRequest
+from backend.services.reviewer import reviewer_service
 
 
 @asynccontextmanager
@@ -58,4 +58,6 @@ async def review_finetuned(request: ReviewRequest) -> ModelReviewResult:
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("main:app", host=settings.api_host, port=settings.api_port, reload=True)
+    from backend.config import settings
+
+    uvicorn.run("backend.main:app", host=settings.api_host, port=settings.api_port, reload=True)

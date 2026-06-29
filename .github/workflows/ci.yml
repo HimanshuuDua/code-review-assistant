@@ -9,18 +9,17 @@ on:
 jobs:
   backend-tests:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -r requirements-lite.txt -r requirements-dev.txt
+      - run: pip install -r backend/requirements-lite.txt -r backend/requirements-dev.txt
       - run: pytest -v
+        working-directory: .
         env:
           INFERENCE_MODE: demo
+          PYTHONPATH: .
 
   frontend-build:
     runs-on: ubuntu-latest

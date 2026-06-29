@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test'
 
 const backendPython =
   process.platform === 'win32'
-    ? '.venv\\Scripts\\python.exe'
+    ? 'backend\\.venv\\Scripts\\python.exe'
     : 'python'
 
 export default defineConfig({
@@ -19,8 +19,8 @@ export default defineConfig({
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: [
     {
-      command: `${backendPython} -m uvicorn main:app --port 8000`,
-      cwd: 'backend',
+      command: `${backendPython} -m uvicorn backend.main:app --port 8000`,
+      cwd: '.',
       url: 'http://localhost:8000/api/health',
       reuseExistingServer: !process.env.CI,
       env: { INFERENCE_MODE: 'demo' },

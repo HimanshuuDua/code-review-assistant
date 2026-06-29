@@ -3,8 +3,8 @@ import re
 import time
 from typing import Any
 
-from config import settings
-from schemas import CommentType, ModelReviewResult, ReviewComment, ReviewRequest, Severity
+from backend.config import settings
+from backend.schemas import CommentType, ModelReviewResult, ReviewComment, ReviewRequest, Severity
 
 SYSTEM_PROMPT = """You are a senior software engineer performing a code review.
 Analyze the provided code and return a JSON array of review comments.
