@@ -10,15 +10,22 @@ const DEFAULT_CODE = `def divide(a, b):
 export default function App() {
   const [code, setCode] = useState(DEFAULT_CODE)
   const [language, setLanguage] = useState('python')
-  const [userName, setUserName] = useState(() => localStorage.getItem('cra_user_name') ?? '')
+  const [userName, setUserName] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    return params.get('user') || localStorage.getItem('cra_user_name') || ''
+  })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<CompareReviewResponse | null>(null)
   const [apiMode, setApiMode] = useState<string>('checking...')
+  const [oauthEnabled, setOauthEnabled] = useState(false)
 
   useEffect(() => {
     checkHealth()
-      .then((h) => setApiMode(h.inference_mode))
+      .then((h) => {
+        setApiMode(h.inference_mode)
+        setOauthEnabled(h.oauth_enabled)
+      })
       .catch(() => setApiMode('offline'))
   }, [])
 
@@ -53,6 +60,11 @@ export default function App() {
             </p>
           </div>
           <div className="flex items-center gap-4">
+            {oauthEnabled && (
+              <a href="/api/auth/github" className="text-xs text-slate-400 hover:text-emerald-400">
+                Sign in with GitHub
+              </a>
+            )}
             <a href="/admin" className="text-xs text-slate-400 hover:text-emerald-400">Admin</a>
             <div className="flex items-center gap-2">
             <span className="text-xs text-slate-500">mode:</span>
@@ -102,8 +114,8 @@ export default function App() {
               testId="base-panel"
             />
             <ReviewPanel
-              title="Fine-tuned Model"
-              subtitle="Specific, actionable review comments"
+              title="Specialized Model"
+              subtitle="CodeReviewer / fine-tuned LoRA"
               comments={result?.finetuned_model.comments ?? []}
               latencyMs={result?.finetuned_model.latency_ms}
               accent="emerald"

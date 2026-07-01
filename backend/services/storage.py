@@ -62,6 +62,20 @@ async def get_review(session: AsyncSession, review_id: str) -> ReviewHistoryItem
     return _to_history_item(record) if record else None
 
 
+async def export_reviews_csv(session: AsyncSession) -> str:
+    result = await session.execute(select(ReviewRecord).order_by(desc(ReviewRecord.created_at)))
+    records = result.scalars().all()
+    lines = ["id,user_name,client_ip,language,issue_types,created_at,code"]
+    for r in records:
+        finetuned = json.loads(r.finetuned_comments_json)
+        types = "|".join(sorted({c.get("type", "") for c in finetuned}))
+        code_escaped = json.dumps(r.code)
+        lines.append(
+            f"{r.id},{r.user_name},{r.client_ip or ''},{r.language},{types},{r.created_at.isoformat()},{code_escaped}"
+        )
+    return "\n".join(lines) + "\n"
+
+
 async def get_stats(session: AsyncSession) -> ReviewStats:
     total = await session.scalar(select(func.count()).select_from(ReviewRecord)) or 0
     users = await session.scalar(select(func.count(func.distinct(ReviewRecord.user_name)))) or 0

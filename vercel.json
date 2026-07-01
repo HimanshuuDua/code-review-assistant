@@ -7,7 +7,9 @@
     { "source": "/admin/(.*)", "destination": "/index.html" }
   ],
   "env": {
-    "INFERENCE_MODE": "demo",
-    "STORAGE_ENABLED": "true"
+    "INFERENCE_MODE": "hybrid",
+    "STORAGE_ENABLED": "true",
+    "APP_BASE_URL": "https://code-review-assistant-eight.vercel.app",
+    "INFERENCE_FALLBACK_DEMO": "true"
   }
 }

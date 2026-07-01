@@ -2,10 +2,13 @@ from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import PlainTextResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.config import settings
 from backend.database import get_session, init_db
+from backend.middleware.rate_limit import add_rate_limit
+from backend.routers.auth import oauth_enabled, router as auth_router
 from backend.schemas import (
     CompareReviewResponse,
     HealthResponse,
@@ -16,7 +19,7 @@ from backend.schemas import (
     ReviewStats,
 )
 from backend.services.reviewer import reviewer_service
-from backend.services.storage import get_review, get_stats, list_reviews, save_review
+from backend.services.storage import export_reviews_csv, get_review, get_stats, list_reviews, save_review
 
 
 def _client_ip(request: Request) -> str | None:
@@ -46,8 +49,8 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title="Code Review Assistant API",
-    description="Compare base Mistral 7B vs fine-tuned code review model",
-    version="1.1.0",
+    description="Compare base Mistral 7B vs fine-tuned/specialized code review models",
+    version="1.2.0",
     lifespan=lifespan,
 )
 
@@ -58,6 +61,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+add_rate_limit(app)
+app.include_router(auth_router)
 
 
 @app.get("/api/health", response_model=HealthResponse)
@@ -68,6 +73,7 @@ async def health() -> HealthResponse:
         base_model_id=settings.base_model_id,
         finetuned_model_id=settings.finetuned_model_id,
         storage_enabled=settings.storage_enabled,
+        oauth_enabled=oauth_enabled(),
     )
 
 
@@ -103,6 +109,12 @@ async def admin_list_reviews(
     items = await list_reviews(session, limit=limit, offset=offset)
     stats = await get_stats(session)
     return ReviewHistoryResponse(items=items, total=stats.total_reviews, limit=limit, offset=offset)
+
+
+@app.get("/api/admin/reviews/export", dependencies=[Depends(verify_admin)])
+async def admin_export_reviews(session: AsyncSession = Depends(get_session)) -> PlainTextResponse:
+    csv_data = await export_reviews_csv(session)
+    return PlainTextResponse(csv_data, media_type="text/csv", headers={"Content-Disposition": "attachment; filename=reviews.csv"})
 
 
 @app.get("/api/admin/reviews/{review_id}", response_model=ReviewHistoryItem, dependencies=[Depends(verify_admin)])

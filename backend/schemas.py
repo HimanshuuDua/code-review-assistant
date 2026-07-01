@@ -52,6 +52,7 @@ class HealthResponse(BaseModel):
     base_model_id: str
     finetuned_model_id: str
     storage_enabled: bool
+    oauth_enabled: bool = False
 
 
 class ReviewHistoryItem(BaseModel):

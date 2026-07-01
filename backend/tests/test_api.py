@@ -9,6 +9,19 @@ async def test_health(client):
     assert data["status"] == "ok"
     assert data["inference_mode"] == "demo"
     assert data["storage_enabled"] is True
+    assert "oauth_enabled" in data
+
+
+@pytest.mark.asyncio
+async def test_admin_export_csv(client, sample_request):
+    await client.post("/api/review", json=sample_request)
+    response = await client.get(
+        "/api/admin/reviews/export",
+        headers={"X-Admin-Key": "test-admin-key"},
+    )
+    assert response.status_code == 200
+    assert "user_name" in response.text
+    assert "alice" in response.text
 
 
 @pytest.mark.asyncio

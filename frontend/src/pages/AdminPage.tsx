@@ -70,6 +70,29 @@ export default function AdminPage() {
           >
             Load
           </button>
+          {adminKey && (
+            <a
+              href={`${import.meta.env.VITE_API_URL ?? ''}/api/admin/reviews/export`}
+              onClick={(e) => {
+                e.preventDefault()
+                fetch(`${import.meta.env.VITE_API_URL ?? ''}/api/admin/reviews/export`, {
+                  headers: { 'X-Admin-Key': adminKey },
+                })
+                  .then((r) => r.text())
+                  .then((csv) => {
+                    const blob = new Blob([csv], { type: 'text/csv' })
+                    const url = URL.createObjectURL(blob)
+                    const a = document.createElement('a')
+                    a.href = url
+                    a.download = 'reviews.csv'
+                    a.click()
+                  })
+              }}
+              className="px-4 py-2 border border-slate-700 hover:border-emerald-500 rounded-lg text-sm"
+            >
+              Export CSV
+            </a>
+          )}
         </div>
 
         {error && <p className="text-red-400 text-sm">{error}</p>}

@@ -1,0 +1,37 @@
+name: Fine-tune Model
+
+on:
+  workflow_dispatch:
+    inputs:
+      hf_username:
+        description: HuggingFace username for model upload
+        required: true
+        type: string
+      max_samples:
+        description: Training samples
+        required: false
+        default: "5000"
+        type: string
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Launch HF Jobs training on T4 GPU
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          hf jobs run --flavor t4-medium --detach --secrets HF_TOKEN \
+            -e HF_USERNAME=${{ inputs.hf_username }} \
+            -e MAX_SAMPLES=${{ inputs.max_samples }} \
+            python:3.12 bash -c "
+              pip install -q datasets accelerate trl peft bitsandbytes transformers huggingface_hub torch gitpython &&
+              git clone --depth 1 https://github.com/HimanshuuDua/code-review-assistant.git /tmp/cra &&
+              cd /tmp/cra &&
+              python scripts/train.py --hf-username \$HF_USERNAME --max-samples \$MAX_SAMPLES --hf-token \$HF_TOKEN
+            "
+
+      - name: Next steps
+        run: |
+          echo "Monitor: hf jobs ps"
+          echo "Then set FINETUNED_MODEL_ID=${{ inputs.hf_username }}/code-review-mistral-lora on Vercel"

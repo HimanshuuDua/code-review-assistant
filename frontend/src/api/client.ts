@@ -17,7 +17,7 @@ export async function reviewCode(request: ReviewRequest): Promise<CompareReviewR
   return response.json()
 }
 
-export async function checkHealth(): Promise<{ status: string; inference_mode: string; storage_enabled: boolean }> {
+export async function checkHealth(): Promise<{ status: string; inference_mode: string; storage_enabled: boolean; oauth_enabled: boolean }> {
   const response = await fetch(`${API_BASE}/api/health`)
   if (!response.ok) throw new Error('API unavailable')
   return response.json()

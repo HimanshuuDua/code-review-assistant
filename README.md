@@ -1,151 +1,111 @@
-# Code Review Assistant
+# Code Review Assistant — Complete Project Guide
 
-An AI-powered code review assistant fine-tuned with LoRA on real pull-request review data. Paste a code snippet and get structured review comments — with a side-by-side comparison of **base Mistral 7B** vs **your fine-tuned model**.
+AI-powered code review with **base Mistral 7B** vs **specialized model** (CodeReviewer / your LoRA), side-by-side UI, review history, and admin dashboard.
 
-## What It Does
+## Live URLs
 
-| Problem | Solution |
-|---------|----------|
-| Generic LLMs give vague feedback | Fine-tuned model gives specific, actionable comments |
-| No way to prove improvement | Before/After side-by-side demo |
-| Training is opaque | Documented Colab notebook with real metrics |
+| Service | URL |
+|---------|-----|
+| **App** | https://code-review-assistant-eight.vercel.app |
+| **Admin** | https://code-review-assistant-eight.vercel.app/admin |
+| **GitHub** | https://github.com/HimanshuuDua/code-review-assistant |
+
+## What's Complete
+
+- React + Tailwind UI with side-by-side comparison
+- FastAPI backend on Vercel (serverless)
+- **Hybrid inference**: Mistral 7B (base) + Microsoft CodeReviewer (specialized) via HuggingFace API, with demo fallback
+- Review history storage (SQLite local / `/tmp` on Vercel / Postgres via `DATABASE_URL`)
+- Admin dashboard — who reviewed what, issue types, CSV export
+- GitHub OAuth (optional — set `GITHUB_CLIENT_ID` + `GITHUB_CLIENT_SECRET`)
+- Rate limiting (30 req/min per IP on `/api/review`)
+- 15+ backend tests, 5 Playwright E2E tests, GitHub Actions CI
+- LoRA fine-tuning Colab notebook + HF Jobs training workflow
+
+## Inference Modes
+
+| Mode | Description |
+|------|-------------|
+| `hybrid` | **Production default** — HF API for Mistral + CodeReviewer, demo fallback |
+| `demo` | Rule-based responses (offline dev) |
+| `huggingface` | Both models via HF Inference API |
+| `local` | GPU required — 4-bit QLoRA loading |
+
+## Quick Start (Local)
+
+```bash
+# Backend
+cd backend && .venv\Scripts\activate
+pip install -r requirements-lite.txt
+cd .. && set PYTHONPATH=.
+uvicorn backend.main:app --reload --port 8000
+
+# Frontend
+cd frontend && npm install && npm run dev
+```
+
+## Fine-tune Your Own LoRA (Optional)
+
+### Option A: Google Colab (free T4)
+1. Open `notebooks/finetune_codereviewer_lora.ipynb` in Colab
+2. Set `HF_TOKEN` + `HF_USERNAME`, enable T4 GPU
+3. Run all cells (~2-4 hours)
+4. Set `FINETUNED_MODEL_ID=your-username/code-review-mistral-lora` on Vercel
+
+### Option B: GitHub Actions + HF Jobs
+1. Add `HF_TOKEN` secret to GitHub repo
+2. Actions → **Fine-tune Model** → Run workflow
+3. Monitor with `hf jobs ps`
+
+## Environment Variables
+
+| Variable | Purpose |
+|----------|---------|
+| `INFERENCE_MODE` | `hybrid` \| `demo` \| `huggingface` \| `local` |
+| `HF_TOKEN` | HuggingFace API (enables real model inference) |
+| `FINETUNED_MODEL_ID` | Your LoRA adapter on HF Hub |
+| `DATABASE_URL` | Postgres connection (Neon recommended for Vercel) |
+| `ADMIN_API_KEY` | Admin dashboard auth |
+| `GITHUB_CLIENT_ID` | Optional GitHub OAuth |
+| `APP_BASE_URL` | Production URL for OAuth redirects |
+
+## Persistent Storage on Vercel (Neon)
+
+1. Vercel Dashboard → Storage → Create Database → Neon Postgres
+2. `DATABASE_URL` is auto-injected
+3. Redeploy — review history persists across deployments
+
+## API
+
+| Endpoint | Auth | Description |
+|----------|------|-------------|
+| `POST /api/review` | — | Compare base vs specialized |
+| `GET /api/admin/reviews` | `X-Admin-Key` | Review history |
+| `GET /api/admin/reviews/export` | `X-Admin-Key` | CSV download |
+| `GET /api/admin/stats` | `X-Admin-Key` | Totals |
+| `GET /api/auth/github` | — | GitHub OAuth (if configured) |
+
+## Tests
+
+```bash
+# Backend
+PYTHONPATH=. pytest backend/tests -v
+
+# E2E
+npm run test:e2e
+
+# Evaluation
+python evaluation/evaluate.py --samples 100 --mode demo
+```
 
 ## Architecture
 
 ```
-┌─────────────┐     ┌──────────────┐     ┌─────────────────────────┐
-│  React UI   │────▶│  FastAPI     │────▶│  Mistral 7B (base)      │
-│  + Tailwind │     │  Backend     │     │  + LoRA adapter (tuned) │
-└─────────────┘     └──────────────┘     └─────────────────────────┘
-                           │
-                    ┌──────┴──────┐
-                    │  Colab NB   │  LoRA fine-tune on CodeReviewer data
-                    │  Evaluation │  BLEU + structured comment metrics
-                    └─────────────┘
+User → React UI → FastAPI → Hybrid Inference
+                              ├─ Base: Mistral 7B (HF API)
+                              └─ Specialized: CodeReviewer / your LoRA
+                    ↓
+              SQLite / Postgres (review history)
+                    ↓
+              Admin Dashboard + CSV Export
 ```
-
-## Tech Stack
-
-| Layer | Tool | Why |
-|-------|------|-----|
-| Base Model | Mistral 7B Instruct | Small, fast, open-source |
-| Fine-tuning | LoRA via PEFT + TRL | Memory-efficient, runs on free T4 GPU |
-| Training | Google Colab / Kaggle | Free T4/A100 GPUs |
-| Dataset | [github-codereview](https://huggingface.co/datasets/ronantakizawa/github-codereview) | Real PR review comments from top repos |
-| Backend | FastAPI | Simple model serving |
-| Frontend | React + Tailwind | Clean side-by-side comparison UI |
-| Hosting | HuggingFace Hub | Free model storage & inference |
-
-## Quick Start
-
-### 1. Fine-tune the model (Colab)
-
-Open `notebooks/finetune_codereviewer_lora.ipynb` in Google Colab:
-
-1. Runtime → Change runtime type → **T4 GPU**
-2. Set your HuggingFace token in the first cell
-3. Run all cells (~2-4 hours on T4)
-4. Push the LoRA adapter to HuggingFace Hub
-
-### 2. Run the backend
-
-```bash
-cd backend
-python -m venv .venv
-.venv\Scripts\activate        # Windows
-# source .venv/bin/activate   # macOS/Linux
-pip install -r requirements.txt
-cp ../.env.example ../.env    # edit with your HF token & model ID
-uvicorn main:app --reload --port 8000
-```
-
-### 3. Run the frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Open http://localhost:5173 — paste code, click **Review**, see base vs fine-tuned side by side.
-
-### 4. Evaluate
-
-```bash
-cd evaluation
-pip install -r requirements.txt
-python evaluate.py --model-id your-username/code-review-mistral-lora
-```
-
-## Project Structure
-
-```
-code-review-assistant/
-├── notebooks/
-│   └── finetune_codereviewer_lora.ipynb   # LoRA training (start here)
-├── backend/
-│   ├── main.py                            # FastAPI server
-│   ├── config.py
-│   ├── schemas.py
-│   └── services/reviewer.py               # Model inference
-├── frontend/
-│   └── src/                               # React + Tailwind UI
-├── evaluation/
-│   └── evaluate.py                        # BLEU & quality metrics
-└── scripts/
-    └── prepare_data.py                      # Dataset preprocessing
-```
-
-## API Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/api/review` | Review code with both models |
-| `POST` | `/api/review/base` | Base Mistral only |
-| `POST` | `/api/review/finetuned` | Fine-tuned model only |
-| `GET` | `/api/health` | Health check |
-
-### Example request
-
-```json
-POST /api/review
-{
-  "code": "def divide(a, b):\n    return a / b",
-  "language": "python"
-}
-```
-
-### Example response
-
-```json
-{
-  "base_model": {
-    "comments": [
-      {"type": "suggestion", "severity": "low", "message": "Consider adding type hints."}
-    ],
-    "raw_response": "..."
-  },
-  "finetuned_model": {
-    "comments": [
-      {"type": "bug", "severity": "high", "message": "Division by zero: add a guard when b == 0."}
-    ],
-    "raw_response": "..."
-  }
-}
-```
-
-## Demo Mode
-
-Without a GPU or HuggingFace token, the backend runs in **demo mode** with realistic sample responses so you can develop the UI immediately. Set `INFERENCE_MODE=demo` in `.env`.
-
-## Training Details
-
-- **Dataset**: 167K human-written review triplets from top GitHub repos
-- **Method**: QLoRA (4-bit) + LoRA rank 16 on attention + MLP layers
-- **Prompt format**: Mistral Instruct chat template
-- **Output**: Structured JSON with `type`, `severity`, `message` per comment
-- **Metrics**: BLEU-4, comment-type accuracy, human preference (A/B)
-
-## License
-
-MIT — dataset follows original licenses (Apache 2.0 for CodeReviewer, MIT for github-codereview).

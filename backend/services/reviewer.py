@@ -259,24 +259,82 @@ class ReviewerService:
     async def review(self, request: ReviewRequest, use_finetuned: bool = False) -> ModelReviewResult:
         model_name = settings.finetuned_model_id if use_finetuned else settings.base_model_id
         prompt = _build_prompt(request)
+        mode = settings.inference_mode
 
-        if settings.inference_mode == "demo":
-            return _demo_response(request, model_name, is_finetuned=use_finetuned)
+        try:
+            if mode == "demo":
+                return _demo_response(request, model_name, is_finetuned=use_finetuned)
 
-        if settings.inference_mode == "local":
-            raw, latency = self._generate_local(prompt, use_finetuned=use_finetuned)
-        elif settings.inference_mode == "huggingface":
-            raw, latency = await self._generate_hf_api(prompt, model_name)
-        else:
-            return _demo_response(request, model_name, is_finetuned=use_finetuned)
+            if mode == "hybrid":
+                return await self._review_hybrid(request, prompt, use_finetuned)
 
-        comments = _parse_comments(raw)
-        return ModelReviewResult(
-            model_name=model_name,
-            comments=comments,
-            raw_response=raw,
-            latency_ms=latency,
+            if mode == "local":
+                raw, latency = self._generate_local(prompt, use_finetuned=use_finetuned)
+            elif mode == "huggingface":
+                target = settings.finetuned_model_id if use_finetuned else settings.base_model_id
+                raw, latency = await self._generate_hf_api(prompt, target)
+            else:
+                return _demo_response(request, model_name, is_finetuned=use_finetuned)
+
+            comments = _parse_comments(raw)
+            return ModelReviewResult(
+                model_name=model_name, comments=comments, raw_response=raw, latency_ms=latency
+            )
+        except Exception:
+            if settings.inference_fallback_demo:
+                return _demo_response(request, model_name, is_finetuned=use_finetuned)
+            raise
+
+    async def _review_hybrid(
+        self, request: ReviewRequest, prompt: str, use_finetuned: bool
+    ) -> ModelReviewResult:
+        from backend.services.inference import (
+            generate_base_mistral,
+            generate_codereviewer,
+            generate_finetuned_lora,
         )
+
+        if use_finetuned:
+            if (
+                settings.finetuned_model_id
+                and settings.finetuned_model_id != settings.codereviewer_model_id
+                and "your-username" not in settings.finetuned_model_id
+            ):
+                try:
+                    raw, latency = await generate_finetuned_lora(prompt, settings.finetuned_model_id)
+                    return ModelReviewResult(
+                        model_name=settings.finetuned_model_id,
+                        comments=_parse_comments(raw),
+                        raw_response=raw,
+                        latency_ms=latency,
+                    )
+                except Exception:
+                    pass
+            try:
+                raw, comments, latency = await generate_codereviewer(request)
+                return ModelReviewResult(
+                    model_name=settings.codereviewer_model_id,
+                    comments=comments,
+                    raw_response=raw,
+                    latency_ms=latency,
+                )
+            except Exception:
+                if settings.inference_fallback_demo:
+                    return _demo_response(request, settings.codereviewer_model_id, is_finetuned=True)
+                raise
+
+        try:
+            raw, latency = await generate_base_mistral(request, prompt)
+            return ModelReviewResult(
+                model_name=settings.base_model_id,
+                comments=_parse_comments(raw),
+                raw_response=raw,
+                latency_ms=latency,
+            )
+        except Exception:
+            if settings.inference_fallback_demo:
+                return _demo_response(request, settings.base_model_id, is_finetuned=False)
+            raise
 
     async def compare(self, request: ReviewRequest) -> tuple[ModelReviewResult, ModelReviewResult]:
         base = await self.review(request, use_finetuned=False)
